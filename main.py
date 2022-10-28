@@ -17,6 +17,7 @@ offset_vals = [0, 15, 30, 20, 25, 25, 25, 30, 10, 30, 15]
 #             [0, 1x  1y  2x  2y  3x  3y  4x  4y  5x  5y]
 #             [0, 1,  2,  3,  4,  5,  6,  7,  8,  9,  10]
 stack_size = [0,0,0,0,0,0] 
+pos_val = [0, 0, 0, 0, 0, 0]
 
 card_object_list = []
 
@@ -53,14 +54,21 @@ class Card:
     def __init__(self, face_val, pos):
         self.face_val = face_val
         self.pos = pos
+
+    # def calc_val(self):
+        
     
     def render_card(self):
 
         # Calculating the position of the card, checking the size of the stack, and multiplying that value by an offset
 
+        # calc_val()
+        temp_val = self.face_val[0]
+        print(temp_val)
+
         temp_pos_x_1 = self.pos * 2 - 1 # Done because of the weird way I store the values in my lists
         temp_pos_y_1 = self.pos * 2
-        temp_pos_x = positions[temp_pos_x_1] + offset_vals[temp_pos_x_1] * (stack_size[self.pos] - 1)
+        temp_pos_x = positions[temp_pos_x_1] + offset_vals[temp_pos_x_1] * (stack_size[self.pos] - 1) # Negative 1 because why not
         temp_pos_y = positions[temp_pos_y_1] + offset_vals[temp_pos_y_1] * (stack_size[self.pos] - 1)
         temp_pos = (temp_pos_x, temp_pos_y)
 
@@ -70,6 +78,8 @@ class Card:
         scaled_card = pygame.transform.scale(load_img, CARD_DIM)
         final_render_card = pygame.transform.rotate(scaled_card, rotations[self.pos])
         window.blit(final_render_card, temp_pos)
+
+        
 
 class Button:
     def __init__(self, x, y, w, h, contents, colour):
@@ -101,11 +111,12 @@ class Button:
 
 hitButton = Button(50, 800, 100, 50, "Hit", GREY)
 
+def update_render():
+    for i in card_object_list:
+        i.render_card()
 
 def main_render():
     hitButton.render_button(window, (0,0,0))
-    for i in card_object_list:
-        i.render_card()
 
 def init_render():
     window.blit(felt_img, (0,0))
@@ -130,7 +141,6 @@ while True:
             if event.key == ord('l'):
                 init_play()
 
-
         if event.type == pygame.MOUSEBUTTONDOWN:
             if hitButton.isOver(m_pos):
 
@@ -147,6 +157,8 @@ while True:
                 stack_size[dealing_pos] += 1
 
                 print(stack_size)
+
+                update_render()
         
         if event.type == pygame.MOUSEMOTION:
             if hitButton.isOver(m_pos):
