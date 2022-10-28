@@ -33,7 +33,6 @@ CARD_FOLDER = os.path.join(ASSET_FOLDER, 'cards')
 
 felt_img = pygame.image.load(os.path.join(ASSET_FOLDER, 'felt.png'))
 
-
 card_list = card_loader(CARD_FOLDER)
 
 dealing_pos = 0
@@ -61,8 +60,8 @@ class Card:
 
         temp_pos_x_1 = self.pos * 2 - 1 # Done because of the weird way I store the values in my lists
         temp_pos_y_1 = self.pos * 2
-        temp_pos_x = positions[temp_pos_x_1] + offset_vals[temp_pos_x_1] * stack_size[self.pos]
-        temp_pos_y = positions[temp_pos_y_1] + offset_vals[temp_pos_y_1] * stack_size[self.pos]
+        temp_pos_x = positions[temp_pos_x_1] + offset_vals[temp_pos_x_1] * (stack_size[self.pos] - 1)
+        temp_pos_y = positions[temp_pos_y_1] + offset_vals[temp_pos_y_1] * (stack_size[self.pos] - 1)
         temp_pos = (temp_pos_x, temp_pos_y)
 
         # Loading the image, scaling it to correct size and rotating to fit the slot
@@ -101,12 +100,18 @@ class Button:
         return False
 
 hitButton = Button(50, 800, 100, 50, "Hit", GREY)
-window.blit(felt_img, (0,0))
+
+
 def main_render():
-    
     hitButton.render_button(window, (0,0,0))
     for i in card_object_list:
         i.render_card()
+
+def init_render():
+    window.blit(felt_img, (0,0))
+    hitButton.render_button(window, (0,0,0))
+
+init_render()
 
 while True:
     
@@ -120,6 +125,15 @@ while True:
         if event.type == pygame.KEYDOWN:
 
             if event.key == ord('p'):
+                pass
+
+            if event.key == ord('l'):
+                init_play()
+
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if hitButton.isOver(m_pos):
+
                 if dealing_pos == 5:
                     dealing_pos = 1
                 else:
@@ -128,19 +142,11 @@ while True:
                 tempcard = Card(random.choice(card_list), dealing_pos)
                 card_object_list.append(tempcard)
                 tempcard = ""
-                main_render()
+                
 
                 stack_size[dealing_pos] += 1
 
                 print(stack_size)
-
-            if event.key == ord('l'):
-                init_play()
-
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if hitButton.isOver(m_pos):
-                print("Clicked button")
         
         if event.type == pygame.MOUSEMOTION:
             if hitButton.isOver(m_pos):
@@ -149,7 +155,7 @@ while True:
                 hitButton.colour = GREY
         
 
-
+    main_render()
     pygame.display.update()
     clock.tick(60)
 
