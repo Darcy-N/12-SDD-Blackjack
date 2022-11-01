@@ -19,6 +19,10 @@ offset_vals = [0, 15, 30, 20, 25, 25, 25, 30, 10, 30, 15]
 stack_size = [0,0,0,0,0,0] 
 pos_val = [0, 0, 0, 0, 0, 0]
 
+temp_val = [[],[],[],[],[],[]]
+
+cal_val = [0, 0, 0, 0, 0, 0]
+
 card_object_list = []
 
 card_count = 0
@@ -54,17 +58,10 @@ class Card:
     def __init__(self, face_val, pos):
         self.face_val = face_val
         self.pos = pos
-
-    # def calc_val(self):
-        
     
     def render_card(self):
 
         # Calculating the position of the card, checking the size of the stack, and multiplying that value by an offset
-
-        # calc_val()
-        temp_val = self.face_val[0]
-        print(temp_val)
 
         temp_pos_x_1 = self.pos * 2 - 1 # Done because of the weird way I store the values in my lists
         temp_pos_y_1 = self.pos * 2
@@ -149,14 +146,23 @@ while True:
                 else:
                     dealing_pos += 1
 
-                tempcard = Card(random.choice(card_list), dealing_pos)
+                random_card = random.choice(card_list)
+                tempcard = Card(random_card, dealing_pos)
                 card_object_list.append(tempcard)
-                tempcard = ""
                 
-
+                
                 stack_size[dealing_pos] += 1
+                
+                temp_face_val = random_card[0]
+                print(temp_face_val)
+                if temp_face_val.lower() == "j" or temp_face_val.lower() == "q" or temp_face_val.lower() == "k" or temp_face_val.lower() == "t":
+                    temp_val[dealing_pos].append("10")
+                else:
+                    temp_val[dealing_pos].append(temp_face_val)
 
-                print(stack_size)
+                print(temp_val)
+
+                tempcard = ""
 
                 update_render()
         
