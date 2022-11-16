@@ -1,6 +1,4 @@
-import pygame
-import random
-import time
+import pygame, random, time, sys
 
 from func import *
 
@@ -19,18 +17,22 @@ offset_vals = [0, 15, 30, 20, 25, 25, 25, 30, 10, 30, 15]
 stack_size = [0,0,0,0,0,0] 
 pos_val = [0, 0, 0, 0, 0, 0]
 
+lable_pos = [(0,0), (0,0), (0,0), (0,0), (0,0), (0,0)]
+
+ace_counter = [0, 0, 0, 0, 0, 0]
 temp_val = [[],[],[],[],[],[]]
-
 cal_val = [0, 0, 0, 0, 0, 0]
-
+final_val = 0
 card_object_list = []
 
 card_count = 0
 
 pygame.init()
+
 window = pygame.display.set_mode(WINDOW_DIM, 0, 32)
 pygame.display.set_caption('Blackjack')
 clock = pygame.time.Clock()
+
 
 DIRPATH = os.path.dirname(os.path.realpath(__file__))
 ASSET_FOLDER = os.path.join(DIRPATH, 'assets')
@@ -99,7 +101,7 @@ class Button:
             win.blit(text, (self.x + (self.w/2 - text.get_width()/2), self.y + (self.h/2 - text.get_height()/2)))
 
     def isOver(self, pos):
-        #Pos is the mouse position or a tuple of (x,y) coordinates
+        # Pos is the mouse position or a tuple of (x,y) coordinates
         if pos[0] > self.x and pos[0] < self.x + self.w:
             if pos[1] > self.y and pos[1] < self.y + self.h:
                 return True
@@ -120,6 +122,50 @@ def init_render():
     hitButton.render_button(window, (0,0,0))
 
 init_render()
+
+def calc_vals():
+    global final_val, ace_counter
+    clear() # Temp
+    
+    for i, j in enumerate(temp_val):
+        for k in j:
+            if k == "a":
+                adding_val = 11
+                ace_counter[i] += 1
+            else:
+                adding_val = int(k)
+            final_val += adding_val
+        
+        while final_val > 21:
+            if final_val > 21 and ace_counter[i] > 0: # Checking that the hand has an ace in it
+
+                # Reducing the hand value by 10 and reducing the number of valid aces (Aces that haven't been used) by 1
+
+                final_val -= 10 
+                ace_counter[i] -= 1
+            else:
+                print("bust") # Rip bozo
+                break
+        
+    
+        cal_val[i] = final_val
+
+        print(cal_val)
+
+        final_val = 0
+
+class lable:
+    def __init__(self, x, y, w, h, contents, colour):
+        self.x = x
+        self.y = y
+        self.w = w                  # Width
+        self.h = h                  # Height
+        self.contents = contents    # Message in the button
+        self.colour = colour
+
+    def render_lable():
+
+
 
 while True:
     
@@ -150,19 +196,17 @@ while True:
                 tempcard = Card(random_card, dealing_pos)
                 card_object_list.append(tempcard)
                 
-                
                 stack_size[dealing_pos] += 1
                 
                 temp_face_val = random_card[0]
-                print(temp_face_val)
-                if temp_face_val.lower() == "j" or temp_face_val.lower() == "q" or temp_face_val.lower() == "k" or temp_face_val.lower() == "t":
+                if temp_face_val.lower() in ('j', 'q', 'k', 't'): # Thanks Drew, Very cool
                     temp_val[dealing_pos].append("10")
                 else:
                     temp_val[dealing_pos].append(temp_face_val)
 
-                print(temp_val)
-
                 tempcard = ""
+
+                calc_vals() # Sorry
 
                 update_render()
         
