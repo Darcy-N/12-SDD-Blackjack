@@ -10,4 +10,4 @@ Python: https://www.python.org/downloads/
 
 Pygame:
 
-> Pip3 install pygame
+> pip3 install pygame
