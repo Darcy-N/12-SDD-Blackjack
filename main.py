@@ -407,12 +407,12 @@ class Game:
                 # while possible to take action (i.e ingame)
 
                 if play.player:
-                    if event.key == pygame.K_h:
+                    if event.key == pygame.K_h and play.acc_bet == False:
                         play.message_log.insert(0, play.message_log_text[6])
                         play.message_log.pop()
                         play.get_card(play.player_hand)
                         play.cpu_action()
-                    if event.key == pygame.K_s:
+                    if event.key == pygame.K_s and play.acc_bet == False:
                         play.message_log.insert(0, play.message_log_text[3])
                         play.message_log.pop()
                         play.cpu_action()
