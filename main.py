@@ -1,262 +1,509 @@
-import pygame, random, time, sys
+# Imports
 
-from func import *
+import os, sys, pygame
+from pygame.locals import *
+from random import randint
 
-clear()
+# Constants
 
-WINDOW_DIM = WINDOW_WIDTH, WINDOW_HEIGHT = 1440, 900
-CARD_DIM = CARD_DIM_X, CARD_DIM_Y =  110, 150
-
-rotations = [0, -30, -15, 0, 15, 30]
-positions = [0, 195, 560, 413, 645, 664, 682, 877, 648, 1070, 560] # What is THIS ?
-#           [0, 1,x  1,y  2,x  2,y  3,x  3,y  4,x  4,y  5,x  5,y]
-#           [0, 1    2    3    4    5    6    7    8    9    10]
-offset_vals = [0, 15, 30, 20, 25, 25, 25, 30, 10, 30, 15]
-#             [0, 1x  1y  2x  2y  3x  3y  4x  4y  5x  5y]
-#             [0, 1,  2,  3,  4,  5,  6,  7,  8,  9,  10]
-stack_size = [0,0,0,0,0,0] 
-pos_val = [0, 0, 0, 0, 0, 0]
-
-label_pos = [(0,0), (0,0), (0,0), (0,0), (0,0), (0,0)]
-ace_counter = [0, 0, 0, 0, 0, 0]
-temp_val = [[],[],[],[],[],[]]
-cal_val = [0, 0, 0, 0, 0, 0]
-final_val = 0
-card_object_list = []
-playing = [0, True, True, True, True, True]
-
-pygame.init()
-
-window = pygame.display.set_mode(WINDOW_DIM, 0, 32)
-pygame.display.set_caption('Blackjack')
-clock = pygame.time.Clock()
-
-
+WINDOW_SIZE = WIDTH, HEIGHT = 1440, 900
 DIRPATH = os.path.dirname(os.path.realpath(__file__))
 ASSET_FOLDER = os.path.join(DIRPATH, 'assets')
 CARD_FOLDER = os.path.join(ASSET_FOLDER, 'cards')
-
 felt_img = pygame.image.load(os.path.join(ASSET_FOLDER, 'felt.png'))
 
-card_list = card_loader(CARD_FOLDER)
-
-dealing_pos = 0
-
-GREY = (66,66,66)
-HOVER_GREY = (99,99,99)
-WHITE = (255,255,255)
-
-def init_play():
-    global dealing_pos
-    for i in range(10):
-        if dealing_pos == 5:
-            dealing_pos = 1
-        else:
-            dealing_pos += 1
-    
 class Card:
+    ''' Card class, handles everything card related '''
 
-    def __init__(self, face_val, pos):
-        self.face_val = face_val
-        self.pos = pos
-    
-    def render_card(self):
+    def __init__(self, image, value):
+        self.image = image
+        self.value = value
+        self.soft_total = None
 
-        # Calculating the position of the card, checking the size of the stack, and multiplying that value by an offset
+    def is_ace(self, total):
+        if total.total < 11:
+            self.soft_total = True
+            total.update(11)
+        elif total.total >= 11:
+            total.update(1)
+        elif total.total > 21 and self.soft_total:
+            self.soft_total = False
+            total.update(-9)
 
-        temp_pos_x_1 = self.pos * 2 - 1 # Done because of the weird way I store the values in my lists
-        temp_pos_y_1 = self.pos * 2
-        temp_pos_x = positions[temp_pos_x_1] + offset_vals[temp_pos_x_1] * (stack_size[self.pos] - 1) # Minus 1 because why not
-        temp_pos_y = positions[temp_pos_y_1] + offset_vals[temp_pos_y_1] * (stack_size[self.pos] - 1)
-        temp_pos = (temp_pos_x, temp_pos_y)
 
-        # Loading the image, scaling it to correct size and rotating to fit the slot
+class Deck:
+    ''' Handles the deck '''
 
-        load_img = pygame.image.load(os.path.join(CARD_FOLDER, self.face_val))
-        scaled_card = pygame.transform.scale(load_img, CARD_DIM)
-        final_render_card = pygame.transform.rotate(scaled_card, rotations[self.pos])
-        window.blit(final_render_card, temp_pos)
+    def __init__(self):
+        # 0: clubs 1: diamonds  2: hearts 3: spades
+        self.cards = {0: {}, 1: {}, 2: {}, 3: {}}
+        # values are assigned to their position in the created deck
+        # ace is at position 0, deal with it in play.calculate_hands
+        self.values = [False, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10]
 
-class Button:
-    def __init__(self, x, y, w, h, contents, colour):
-        self.x = x
-        self.y = y
-        self.w = w                  # Width
-        self.h = h                  # Height
-        self.contents = contents    # Message in the button
-        self.colour = colour
+    def create(self):
+        suits = ["Clubs ", "Diamond ", "Hearts ", "Spades "]
+        # populate self cards with the appropriate images
+        for suit in range(4):
+            for card in range(1, 14):
+                self.cards[suit][card] = Card(
+                    pygame.image.load(
+                        'assets/' + str(suits[suit]) + str(card) + '.png'),
+                    self.values[card - 1]
+                )
 
-    def render_button(self,win,outline=None):
-        if outline:
-            pygame.draw.rect(win, outline, (self.x-2,self.y-2,self.w+4,self.h+4),0)
-            
-        pygame.draw.rect(win, self.colour, (self.x,self.y,self.w,self.h),0)
+class Total:
+    ''' Hand values class '''
+
+    def __init__(self):
+        self.total = 0
+
+    def update(self, value):
+        self.total += value
+
+class Play:
+    ''' Pretty much all other constants, also incudes functions used by the game '''
+
+    def __init__(self):
+        # hands
+        self.player_hand = []
+        self.dealer_hand = []
+        self.cpu1_hand = []
+        self.cpu2_hand = []
+
+        # gui
+        self.player_text = "Player: "
+        self.dealer_text = "Dealer: "
+        self.cpu1_text = "CPU 1: "
+        self.cpu2_text = "CPU 2: "
+        self.player_text_x = 625
+        self.player_text_y = 300
+        self.dealer_text_x = 390
+        self.dealer_text_y = 115
+        self.cpu1_x = 335
+        self.cpu1_y = 300
+        self.cpu2_x = 935
+        self.cpu2_y = 300
+
+        self.money = 1000
+        self.bet = 0
+
+        # Key images
+
+        self.display_keys = [
+            pygame.image.load("assets/H_key.png"),
+            pygame.image.load("assets/S_key.png"),
+            pygame.image.load("assets/R_key.png"),
+            pygame.image.load("assets/C_key.png"),
+            pygame.image.load("assets/D_key.png"),
+        ]
+
+        self.betting_keys = [
+            pygame.image.load("assets/Up_key.png"),
+            pygame.image.load("assets/Down_key.png")
+        ]
+
+        self.display_keys_text = {
+            0: "Hit",
+            1: "Stand",
+            2: "New Game",
+            3: "Confirm bet",
+            4: "Double"
+        }
         
-        if self.contents != '':
-            font = pygame.font.SysFont('none', 60)
-            text = font.render(self.contents, 1, (0,0,0))
-            win.blit(text, (self.x + (self.w/2 - text.get_width()/2), self.y + (self.h/2 - text.get_height()/2)))
+        self.betting_keys_text = {
+            0: "Increase bet (100)",
+            1: "Decrease bet (100)"
+        }
 
-    def isOver(self, pos):
-        # Pos is the mouse position or a tuple of (x,y) coordinates
-        if pos[0] > self.x and pos[0] < self.x + self.w:
-            if pos[1] > self.y and pos[1] < self.y + self.h:
-                return True
-            
-        return False
+        self.message_log = [" ", " ", " ", " ", ]
+        self.message_log_text = {
+            0: "Player wins",
+            1: "Dealer wins, game over",
+            2: "Game is a tie",
+            3: "Player stays",
+            4: "Player busts, game over",
+            5: "Dealer busts, Player wins",
+            6: "Player hits",
+            7: "Please place bets",
+            8: "Player doubled",
+            9: "Not enough money"
+        }
 
-def render_label(x, y, contents, colour, font_size, rot, win):
-    font = pygame.font.SysFont('none', font_size) # Chosing the font and size
-    temp_text = font.render(contents, True, colour) # Creating the font object
-    rot_text = pygame.transform.rotate(temp_text, rot) # Rotating the text object
-    win.blit(temp_text, (x, y)) # Blitting the rotated text
+        # action
+        self.player = True
+        self.game_over = False
+        self.acc_bet = True # Accepting bets
 
-hitButton = Button(535, 535, 150, 50, "Hit", GREY)
-standButton = Button(735, 535, 150, 50, "Stand", GREY)
+    # calcualations and actions
 
-def init_render():
-    window.blit(felt_img, (0,0))
-    hitButton.render_button(window, (0,0,0))
-    standButton.render_button(window, (0,0,0))
-    render_label(100, 100, str(cal_val[1]), WHITE, 60, 40, window)
+    def get_card(self, hand, number=1):
+        for get_card in range(number):
+            suit, card = randint(0, 3), randint(1, 13) # change to pop card from a deck
+            hand.append(game.deck.cards[suit][card])
 
-def main_render():
-    window.blit(felt_img, (0,0))
-    for i in card_object_list:
-        i.render_card()
-    hitButton.render_button(window, (0,0,0))
-    standButton.render_button(window, (0,0,0))
+        self.calculate_hands(self.player_hand, player)
+        self.calculate_hands(self.dealer_hand, dealer)
+        self.calculate_hands(self.cpu1_hand, cpu1)
+        self.calculate_hands(self.cpu2_hand, cpu2)
 
-    render_label(positions[1] + 100, positions[2] - 103, str(cal_val[1]), WHITE, 60, 40, window)
-    render_label(positions[3] + 100, positions[4] - 188, str(cal_val[2]), WHITE, 60, 40, window)
-    render_label(positions[5] + 45, positions[6] - 225, str(cal_val[3]), WHITE, 60, 40, window)
-    render_label(positions[7] + 45, positions[8] - 191, str(cal_val[4]), WHITE, 60, 40, window)
-    render_label(positions[9] + 75, positions[10] - 103, str(cal_val[5]), WHITE, 60, 40, window)
+    # Calc vals
 
-    render_label(positions[1] + 100, positions[2] - 203, str(playing[1]), WHITE, 60, 40, window)
-    render_label(positions[3] + 100, positions[4] - 288, str(playing[2]), WHITE, 60, 40, window)
-    render_label(positions[5] + 45, positions[6] - 325, str(playing[3]), WHITE, 60, 40, window)
-    render_label(positions[7] + 45, positions[8] - 291, str(playing[4]), WHITE, 60, 40, window)
-    render_label(positions[9] + 75, positions[10] - 203, str(playing[5]), WHITE, 60, 40, window)
+    def calculate_hands(self, hand, total):
+        total.total = 0
+        for card in range(len(hand)):
+            # cards
+            if hand[card].value:
+                total.update(hand[card].value)
+            # aces
+            else: pass
+        for card in range(len(hand)):
+            if not hand[card].value:
+                hand[card].is_ace(total)
 
-# window.blit(felt_img, (0,0))
+        # player bust
 
-init_render()
+        if hand == self.player_hand and player.total > 21:
+            self.player_bust()
+        if self.game_over:
+            # dealer bust
+            if hand == self.dealer_hand and dealer.total > 21:
+                play.message_log.insert(0, play.message_log_text[5])
+                play.message_log.pop()
+                play.money += play.bet * 1.5 # Pay 2:3
+                play.bet = 0
+            # tie
+            if hand == self.dealer_hand and player.total == dealer.total:
+                play.message_log.insert(0, play.message_log_text[2])
+                play.message_log.pop()
+                play.money += play.bet
+                play.bet = 0
+            # player win
+            elif hand == self.dealer_hand and player.total > dealer.total:
+                play.message_log.insert(0, play.message_log_text[0])
+                play.message_log.pop()
+                play.money += play.bet * 1.5 # Pay 2:3
+                play.bet = 0
+            # dealer win
+            elif hand == self.dealer_hand and dealer.total > player.total and dealer.total <= 21:
+                play.message_log.insert(0, play.message_log_text[1])
+                play.message_log.pop()
 
-def calc_vals():
-    global final_val, ace_counter, playing, dealing_pos
+    def player_bust(self):
+        self.player = False
+        play.message_log.insert(0, play.message_log_text[4])
+        play.message_log.pop()
+
+    def player_stay(self):
+        self.player = False
+        self.dealer_action()
+
+    def dealer_action(self):
+        while dealer.total < 17:
+            self.get_card(self.dealer_hand)
+        self.game_over = True
+        self.calculate_hands(self.player_hand, player)
+        self.calculate_hands(self.dealer_hand, dealer)
     
-    for i, j in enumerate(temp_val): # Enumerate is used to have both the index and actual value pulled from the list
-        for k in j:
-            if k == "a":
-                adding_val = 11
-                ace_counter[i] += 1
+    def cpu_action(self): # ccpu = current cpu
+        if self.player == False:
+            while cpu1.total < 17:
+                self.get_card(self.cpu1_hand)
+                self.get_card(self.cpu2_hand)
+        else:
+            if cpu1.total < 17:
+                self.get_card(self.cpu1_hand)
+            if cpu2.total < 16:
+                self.get_card(self.cpu2_hand)
+        # self.calculate_hands(ccpu, ctotal) 
+
+    # gui
+
+    def display_hands(self):
+        # Player
+        x, y = 670, 80
+        for card in range(len(self.dealer_hand)):
+            game.screen.blit(self.dealer_hand[card].image, (x, y))
+            x += 40
+            y += 15
+        # Dealer
+        x, y = 670, 380
+        for card in range(len(self.player_hand)):
+            game.screen.blit(self.player_hand[card].image, (x, y))
+            x += 40
+            y += 15
+        x, y = 375, 380
+        # CPU1
+        for card in range(len(self.cpu1_hand)):
+            game.screen.blit(self.cpu1_hand[card].image, (x, y))
+            x += 40
+            y += 15
+        # CPU2
+        x, y = 975, 380
+        for card in range(len(self.cpu2_hand)):
+            game.screen.blit(self.cpu2_hand[card].image, (x, y))
+            x += 40
+            y += 15
+        # totals
+        game.screen.blit(game.render_font(self.player_text + str(player.total)), (self.player_text_x, self.player_text_y))
+        game.screen.blit(game.render_font(self.dealer_text + str(dealer.total)), (self.dealer_text_x, self.dealer_text_y))
+        game.screen.blit(game.render_font(self.cpu1_text + str(cpu1.total)), (self.cpu1_x, self.cpu1_y))
+        game.screen.blit(game.render_font(self.cpu2_text + str(cpu2.total)), (self.cpu2_x, self.cpu2_y))
+
+        # Bet amount text
+
+        game.screen.blit(game.render_font("Bet ammount:" + str(self.bet)), (900, 710))
+        game.screen.blit(game.render_font("Money left:" + str(self.money)), (900, 765))
+        game.screen.blit(game.render_font("Betting open:" + str(self.acc_bet)), (900, 820))
+
+
+    def display_gui(self):
+
+        # Controls GUI
+
+        x, y = 45, 600
+        for key in range(len(self.display_keys)):
+            game.screen.blit(self.display_keys[key], (x, y))
+            y += 55
+
+        x, y = 105, 600
+        for text in self.display_keys_text:
+            game.screen.blit(game.render_font(
+                self.display_keys_text[text]), (x, y))
+            y += 55
+
+        # Betting GUI
+
+        x, y = 1300, 600
+        for key in range(len(self.betting_keys)):
+            game.screen.blit(self.betting_keys[key], (x, y))
+            y += 55
+
+        x, y = 900, 600
+        for text in self.betting_keys_text:
+            game.screen.blit(game.render_font(
+                self.betting_keys_text[text]), (x, y))
+            y += 55
+
+        # Game messages GUI
+
+        x, y = 350, 695
+        for message in range(len(self.message_log)):
+            game.screen.blit(game.render_font(
+                self.message_log[message]), (x, y))
+            y += 55
+
+    # initialisation and loop
+
+    def initialise(self):
+        self.get_card(self.player_hand, 2)
+        self.get_card(self.dealer_hand, 1)
+        self.get_card(self.cpu1_hand, 2)
+        self.get_card(self.cpu2_hand, 2)
+
+    def loop(self):
+        game.get_input()
+        self.display_gui()
+        self.display_hands()
+        pygame.display.flip()
+
+    def reset(self):
+        # reset game to 0
+        self.player_hand = []
+        self.dealer_hand = []
+        self.cpu1_hand = []
+        self.cpu2_hand = []
+        player.total = 0
+        dealer.total = 0
+        cpu1.total = 0
+        cpu2.total = 0
+        self.bet = 0
+
+        self.message_log = [" ", " ", " ", " ", ]
+        self.player = True
+        self.game_over = False
+
+class Game:
+    ''' Game object handles all of the game related processes '''
+
+    def __init__(self):
+        # initialise pygame and set window values
+        pygame.init()
+        self.screen = pygame.display.set_mode(WINDOW_SIZE)
+        pygame.display.set_caption("Blackjack")
+        self.font = pygame.font.Font('assets/clacon.ttf', 50)
+        # assign cards to images
+        self.deck = Deck()
+        self.deck.create()
+
+        # text and settings for main menu
+        self.main_menu = True
+        self.menu_text = {
+            0: "Blackjack",
+            1: " ",
+            2: "New Game",
+            3: "How to play",
+            4: "Exit Game",
+        }
+        self.menu_selector = '>'
+        self.menu_selector_x = 475
+        self.menu_selector_y = 490
+
+        # how to play
+        self.how_to_play = False
+        self.how_to_play_text = {
+            0: "How to play Blackjack - simplified",
+            1: " ",
+            2: "Beat the dealer's hand without going over 21.",
+            3: "'23465789' are worth their face value.",
+            4: "'JQK' = 10, 'A' = 1, 11 depending on best hand.",
+            5: "Each player starts with two cards.",
+            6: "HIT gets another card, STAY keeps the hand you have.",
+            7: "If you go over 21 you BUST, and the dealer wins.",
+            8: "2 card total of 21 equals BLACKJACK.",
+            9: "Dealer plays until their cards total 17 or higher.",
+        }
+
+        # new game
+        self.new_game = False
+
+    # handle any player key presses
+    def get_input(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+
+            if event.type == pygame.KEYDOWN:
+                # back to main menu
+                if event.key == pygame.K_ESCAPE:
+                    if not self.main_menu:
+                        self.main_menu = True
+                        self.new_game = False
+                        self.how_to_play = False
+
+                # main menu
+                if self.main_menu:
+                    if event.key == pygame.K_DOWN:
+                        if self.menu_selector_y < 580:
+                            self.menu_selector_y += 45
+                    if event.key == pygame.K_UP:
+                        if self.menu_selector_y > 490:
+                            self.menu_selector_y -= 45
+
+                    if event.key == pygame.K_RETURN:
+                        if self.menu_selector_y == 490:
+                            self.main_menu = False
+                            self.new_game = True
+                            self.how_to_play = False
+                            play.reset()
+                        if self.menu_selector_y == 535:
+                            self.main_menu = False
+                            self.new_game = False
+                            self.how_to_play = True
+                        if self.menu_selector_y == 580:
+                            pygame.quit()
+                            sys.exit("Thanks for playing!")
+
+                # while possible to take action (i.e ingame)
+
+                if play.player:
+                    if event.key == pygame.K_h:
+                        play.message_log.insert(0, play.message_log_text[6])
+                        play.message_log.pop()
+                        play.get_card(play.player_hand)
+                        play.cpu_action()
+                    if event.key == pygame.K_s:
+                        play.message_log.insert(0, play.message_log_text[3])
+                        play.message_log.pop()
+                        play.cpu_action()
+                        play.player_stay()
+                    if event.key == pygame.K_UP and play.acc_bet == True:
+                        if play.money >= 100:
+                            play.bet += 100
+                            play.money -= 100
+                        else: pass
+                    if event.key == pygame.K_DOWN and play.acc_bet == True:
+                        if play.bet >= 100:
+                            play.bet -= 100
+                            play.money += 100
+                    if event.key == pygame.K_c:
+                        if play.bet > 0:
+                            play.initialise()
+                            play.acc_bet = False
+                        else: play.message_log.insert(0, play.message_log_text[7])
+                    if event.key == pygame.K_d:
+                        if play.money >= play.bet:
+                            play.money -= play.bet
+                            play.bet *= 2
+                            play.get_card(play.player_hand)
+                            play.player_stay()
+                            play.message_log.insert(0, play.message_log_text[8])
+
+                        else: play.message_log.insert(0, play.message_log_text[9])
+
+                # reset
+                if event.key == pygame.K_r:
+                    play.acc_bet = True
+                    play.reset()
+
+    # render all game objects
+    def render(self):
+        # render main menu
+        if self.main_menu:
+            menu_text_x, menu_text_y = 500, 400
+            for text in self.menu_text:
+                self.screen.blit(self.render_font(
+                    self.menu_text[text]), (menu_text_x, menu_text_y))
+                menu_text_y += 45
+            self.screen.blit(self.render_font(self.menu_selector),
+                             (self.menu_selector_x, self.menu_selector_y))
+
+        # render how to play
+        if self.how_to_play:
+            x, y = 45, 45
+            for text in self.how_to_play_text:
+                self.screen.blit(self.render_font(
+                    self.how_to_play_text[text]), (x, y))
+                y += 45
+            # display cards
+            x, y = 45, 600
+            for suit in range(0, 2):
+                for card in self.deck.cards[suit]:
+                    self.screen.blit(self.deck.cards[suit][card].image, (x, y))
+                    x += 40
+            x, y = 45, 700
+            for suit in range(2, 4):
+                for card in self.deck.cards[suit]:
+                    self.screen.blit(self.deck.cards[suit][card].image, (x, y))
+                    x += 40
+
+    # function that will render font to blit
+    def render_font(self, text):
+        text_to_render = self.font.render(text, True, (255, 255, 255))
+        return text_to_render
+
+    # main game loop
+    def loop(self):
+        while True:
+            if self.main_menu == False and self.how_to_play == False:
+                self.screen.blit(felt_img, (0,0))
             else:
-                adding_val = int(k)
-            final_val += adding_val
-        
-        # if final_val > 21 and ace_counter[i] > 0: # Checking that the hand has an ace in it
-        #     pass
-            # Reducing the hand value by 10 and reducing the number of valid aces (Aces that haven't been used) by 1
+                self.screen.fill((0,128,0))
 
-        while ace_counter[i] > 0 and final_val > 21:
-            final_val -= 10 
-            ace_counter[i] -= 1
+            self.render()
+            self.get_input()
+
+            if self.new_game:
+                play.loop()
+
+            pygame.display.flip()
 
 
-        if final_val > 21 and ace_counter[i] == 0:
-            print(dealing_pos - 1)
-            playing[dealing_pos] = False
-
-            if dealing_pos == 5:
-                dealing_pos = 1
-            else:
-                dealing_pos += 1
-        
-        cal_val[i] = final_val
-        final_val = 0
-
-def dealer_play():
-    print("Dealer play")
-    pass
-
-while True:
-    
-    for event in pygame.event.get():
-        m_pos = pygame.mouse.get_pos()
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
-        if event.type == pygame.KEYDOWN:
-
-            if event.key == ord('p'):
-                pass
-            if event.key == ord('l'):
-                init_play()
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-
-            if hitButton.isOver(m_pos):
-
-                if dealing_pos == 5:
-                    dealing_pos = 1
-                else:
-                    dealing_pos += 1
-
-                
-                print(dealing_pos)
-                if playing[dealing_pos] == True:
-
-                    print("nee")
-
-                    random_card = random.choice(card_list) # Change to pop
-                    tempcard = Card(random_card, dealing_pos)
-                    card_object_list.append(tempcard)
-
-                    
-                    stack_size[dealing_pos] += 1
-                    
-                    temp_face_val = random_card[0]
-                    if temp_face_val.lower() in ('j', 'q', 'k', 't'): # Thanks Drew, Very cool
-                        temp_val[dealing_pos].append("10")
-                    else:
-                        temp_val[dealing_pos].append(temp_face_val)
-
-                    tempcard = ""
-
-                    calc_vals() # Sorry? for what? jank? probs?
-
-                    main_render()
-                
-                else:
-                    print("problem")  
-                    if dealing_pos == 5:
-                        dealing_pos = 1
-                    else:
-                        dealing_pos += 1
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if standButton.isOver(m_pos):
-                playing[dealing_pos] = False
-                if dealing_pos == 5:
-                    dealing_pos = 1
-                else:
-                    dealing_pos += 1
-                print("dense")
-
-                main_render()
-        
-        # if event.type == pygame.MOUSEMOTION:
-        #     if hitButton.isOver(m_pos):
-        #         hitButton.colour = HOVER_GREY
-        #     else:
-        #         hitButton.colour = GREY
-        #     if standButton.isOver(m_pos):
-        #         standButton.colour = HOVER_GREY
-        
-        if playing == [0, False, False, False, False, False]:
-            dealer_play()
-            playing = [0, False, False, False, False, False]
-        
-    pygame.display.update()
-    clock.tick(60)
+if __name__ == "__main__":
+    game = Game()
+    play = Play()
+    player = Total()
+    dealer = Total()
+    cpu1 = Total()
+    cpu2 = Total()
+    game.loop()

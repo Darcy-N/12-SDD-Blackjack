@@ -1,19 +1,15 @@
-- # Needs, objectives and Boundaries
-### Darcy Nielson
--
-- ### Needs and Objectives
+- ### Needs, Objectives and Boundaries
 	- Basic blackjack aspects including:
 		- Hit and standing
-		- Double and splitting
+		- Double function
 		- A shuffling shoe with multiple decks
 		- A Dealer that follows rules assigned by the player
-	- The game needs to built with an Object-oriented approach in mind
-	- Simple, user friendly UI
+	- The game needs to be built with an Object-oriented approach in mind
+	- Simple, user-friendly UI
 	- An objective to work towards and a Winning scenario
 	- A Fun, interesting game that differs from the original blackjack idea
--
+
 - ### Boundaries
 	- The player count will only be limited to five players.
 	- The program won't include any animations/advanced graphics
-	- The program will only be single player
--
+	- The program will be single player
