@@ -1,8 +1,7 @@
 - # Evaluation of implementation methods
 - ### Darcy Nielson
--
+
 - # Direct conversion
-  collapsed:: true
 	- Direct conversion is an instant transfer from an old system to a new system. The old system is rendered useless once the conversion has happened and all users are forced to use the new system.
 	- Advantages:
 		- Quick, Changes happen instantly
@@ -13,8 +12,8 @@
 		- All data must be compatible with the new system. High chance of damage to data
 		- Inadequate training on the use of the new system can shock/annoy users
 		- High workload for management staff
+
 - # Parallel conversion
-  collapsed:: true
 	- The parallel conversion method involves running both systems simultaneously for a certain amount of time. The new system will be brought in at full scale and the old system will remain at full scale for a certain amount of time. Once that time has ended, The old system will be taken away and all users will be forced onto the new system.
 	-
 	- Advantages:
@@ -25,8 +24,8 @@
 		- Expensive to have both systems running at the same time
 		- Data needs to be synced between both systems. If this isn't done, data can be inconsistent and incorrect
 		- Allows for users to not use the new system, meaning they will be unprepared for the cut-off date.
+
 - # Phased conversion
-  collapsed:: true
 	- The Phased conversion is a combination of the parallel and direct conversion. It involves certain elements being phased out from the old system and replaced by parts of the new system.
 	- Advantages:
 		- Lots of time for users to learn the new system, part by part
@@ -41,8 +40,8 @@
 		- Expensive as both systems need to run at the same time
 		- Data needs to be kept consistent while in use by both systems
 		- Inconvenient for users as they need to switch systems often
+
 - # Pilot conversion
-  collapsed:: true
 	- The Pilot conversion involves a small group of users as a "pilot" or trial. This allows developers to fix any issues with the new system before the new system is rolled out to the entire user-base.
 	- Advantages:
 		- Any errors in the new application can be fixed before the entire user-base uses the new software.
@@ -51,8 +50,8 @@
 		- Expensive as both systems need to run at the same time
 		- This method only works with large user-bases
 		- Data needs to be kept consistent while in use by both systems
+		
 - # Recommended implementation
-  collapsed:: true
 	- Due to the nature of this application, the direct conversion is the only implementation method that is effective.
 	- This is due to:
 		- Very small user base
