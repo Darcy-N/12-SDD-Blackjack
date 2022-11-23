@@ -17,15 +17,13 @@ offset_vals = [0, 15, 30, 20, 25, 25, 25, 30, 10, 30, 15]
 stack_size = [0,0,0,0,0,0] 
 pos_val = [0, 0, 0, 0, 0, 0]
 
-lable_pos = [(0,0), (0,0), (0,0), (0,0), (0,0), (0,0)]
-
+label_pos = [(0,0), (0,0), (0,0), (0,0), (0,0), (0,0)]
 ace_counter = [0, 0, 0, 0, 0, 0]
 temp_val = [[],[],[],[],[],[]]
 cal_val = [0, 0, 0, 0, 0, 0]
 final_val = 0
 card_object_list = []
-
-card_count = 0
+playing = [0, True, True, True, True, True]
 
 pygame.init()
 
@@ -46,6 +44,7 @@ dealing_pos = 0
 
 GREY = (66,66,66)
 HOVER_GREY = (99,99,99)
+WHITE = (255,255,255)
 
 def init_play():
     global dealing_pos
@@ -67,7 +66,7 @@ class Card:
 
         temp_pos_x_1 = self.pos * 2 - 1 # Done because of the weird way I store the values in my lists
         temp_pos_y_1 = self.pos * 2
-        temp_pos_x = positions[temp_pos_x_1] + offset_vals[temp_pos_x_1] * (stack_size[self.pos] - 1) # Negative 1 because why not
+        temp_pos_x = positions[temp_pos_x_1] + offset_vals[temp_pos_x_1] * (stack_size[self.pos] - 1) # Minus 1 because why not
         temp_pos_y = positions[temp_pos_y_1] + offset_vals[temp_pos_y_1] * (stack_size[self.pos] - 1)
         temp_pos = (temp_pos_x, temp_pos_y)
 
@@ -77,8 +76,6 @@ class Card:
         scaled_card = pygame.transform.scale(load_img, CARD_DIM)
         final_render_card = pygame.transform.rotate(scaled_card, rotations[self.pos])
         window.blit(final_render_card, temp_pos)
-
-        
 
 class Button:
     def __init__(self, x, y, w, h, contents, colour):
@@ -96,7 +93,7 @@ class Button:
         pygame.draw.rect(win, self.colour, (self.x,self.y,self.w,self.h),0)
         
         if self.contents != '':
-            font = pygame.font.SysFont('comicsans', 60)
+            font = pygame.font.SysFont('none', 60)
             text = font.render(self.contents, 1, (0,0,0))
             win.blit(text, (self.x + (self.w/2 - text.get_width()/2), self.y + (self.h/2 - text.get_height()/2)))
 
@@ -108,26 +105,48 @@ class Button:
             
         return False
 
-hitButton = Button(50, 800, 100, 50, "Hit", GREY)
+def render_label(x, y, contents, colour, font_size, rot, win):
+    font = pygame.font.SysFont('none', font_size) # Chosing the font and size
+    temp_text = font.render(contents, True, colour) # Creating the font object
+    rot_text = pygame.transform.rotate(temp_text, rot) # Rotating the text object
+    win.blit(temp_text, (x, y)) # Blitting the rotated text
 
-def update_render():
-    for i in card_object_list:
-        i.render_card()
-
-def main_render():
-    hitButton.render_button(window, (0,0,0))
+hitButton = Button(535, 535, 150, 50, "Hit", GREY)
+standButton = Button(735, 535, 150, 50, "Stand", GREY)
 
 def init_render():
     window.blit(felt_img, (0,0))
     hitButton.render_button(window, (0,0,0))
+    standButton.render_button(window, (0,0,0))
+    render_label(100, 100, str(cal_val[1]), WHITE, 60, 40, window)
+
+def main_render():
+    window.blit(felt_img, (0,0))
+    for i in card_object_list:
+        i.render_card()
+    hitButton.render_button(window, (0,0,0))
+    standButton.render_button(window, (0,0,0))
+
+    render_label(positions[1] + 100, positions[2] - 103, str(cal_val[1]), WHITE, 60, 40, window)
+    render_label(positions[3] + 100, positions[4] - 188, str(cal_val[2]), WHITE, 60, 40, window)
+    render_label(positions[5] + 45, positions[6] - 225, str(cal_val[3]), WHITE, 60, 40, window)
+    render_label(positions[7] + 45, positions[8] - 191, str(cal_val[4]), WHITE, 60, 40, window)
+    render_label(positions[9] + 75, positions[10] - 103, str(cal_val[5]), WHITE, 60, 40, window)
+
+    render_label(positions[1] + 100, positions[2] - 203, str(playing[1]), WHITE, 60, 40, window)
+    render_label(positions[3] + 100, positions[4] - 288, str(playing[2]), WHITE, 60, 40, window)
+    render_label(positions[5] + 45, positions[6] - 325, str(playing[3]), WHITE, 60, 40, window)
+    render_label(positions[7] + 45, positions[8] - 291, str(playing[4]), WHITE, 60, 40, window)
+    render_label(positions[9] + 75, positions[10] - 203, str(playing[5]), WHITE, 60, 40, window)
+
+# window.blit(felt_img, (0,0))
 
 init_render()
 
 def calc_vals():
-    global final_val, ace_counter
-    clear() # Temp
+    global final_val, ace_counter, playing, dealing_pos
     
-    for i, j in enumerate(temp_val):
+    for i, j in enumerate(temp_val): # Enumerate is used to have both the index and actual value pulled from the list
         for k in j:
             if k == "a":
                 adding_val = 11
@@ -136,43 +155,35 @@ def calc_vals():
                 adding_val = int(k)
             final_val += adding_val
         
-        while final_val > 21:
-            if final_val > 21 and ace_counter[i] > 0: # Checking that the hand has an ace in it
+        # if final_val > 21 and ace_counter[i] > 0: # Checking that the hand has an ace in it
+        #     pass
+            # Reducing the hand value by 10 and reducing the number of valid aces (Aces that haven't been used) by 1
 
-                # Reducing the hand value by 10 and reducing the number of valid aces (Aces that haven't been used) by 1
+        while ace_counter[i] > 0 and final_val > 21:
+            final_val -= 10 
+            ace_counter[i] -= 1
 
-                final_val -= 10 
-                ace_counter[i] -= 1
+
+        if final_val > 21 and ace_counter[i] == 0:
+            print(dealing_pos - 1)
+            playing[dealing_pos] = False
+
+            if dealing_pos == 5:
+                dealing_pos = 1
             else:
-                print("bust") # Rip bozo
-                break
+                dealing_pos += 1
         
-    
         cal_val[i] = final_val
-
-        print(cal_val)
-
         final_val = 0
 
-class lable:
-    def __init__(self, x, y, w, h, contents, colour):
-        self.x = x
-        self.y = y
-        self.w = w                  # Width
-        self.h = h                  # Height
-        self.contents = contents    # Message in the button
-        self.colour = colour
-
-    def render_lable():
-
-
+def dealer_play():
+    print("Dealer play")
+    pass
 
 while True:
     
     for event in pygame.event.get():
-        
         m_pos = pygame.mouse.get_pos()
-
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
@@ -180,11 +191,11 @@ while True:
 
             if event.key == ord('p'):
                 pass
-
             if event.key == ord('l'):
                 init_play()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
+
             if hitButton.isOver(m_pos):
 
                 if dealing_pos == 5:
@@ -192,32 +203,60 @@ while True:
                 else:
                     dealing_pos += 1
 
-                random_card = random.choice(card_list)
-                tempcard = Card(random_card, dealing_pos)
-                card_object_list.append(tempcard)
                 
-                stack_size[dealing_pos] += 1
+                print(dealing_pos)
+                if playing[dealing_pos] == True:
+
+                    print("nee")
+
+                    random_card = random.choice(card_list) # Change to pop
+                    tempcard = Card(random_card, dealing_pos)
+                    card_object_list.append(tempcard)
+
+                    
+                    stack_size[dealing_pos] += 1
+                    
+                    temp_face_val = random_card[0]
+                    if temp_face_val.lower() in ('j', 'q', 'k', 't'): # Thanks Drew, Very cool
+                        temp_val[dealing_pos].append("10")
+                    else:
+                        temp_val[dealing_pos].append(temp_face_val)
+
+                    tempcard = ""
+
+                    calc_vals() # Sorry? for what? jank? probs?
+
+                    main_render()
                 
-                temp_face_val = random_card[0]
-                if temp_face_val.lower() in ('j', 'q', 'k', 't'): # Thanks Drew, Very cool
-                    temp_val[dealing_pos].append("10")
                 else:
-                    temp_val[dealing_pos].append(temp_face_val)
+                    print("problem")  
+                    if dealing_pos == 5:
+                        dealing_pos = 1
+                    else:
+                        dealing_pos += 1
 
-                tempcard = ""
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if standButton.isOver(m_pos):
+                playing[dealing_pos] = False
+                if dealing_pos == 5:
+                    dealing_pos = 1
+                else:
+                    dealing_pos += 1
+                print("dense")
 
-                calc_vals() # Sorry
-
-                update_render()
+                main_render()
         
-        if event.type == pygame.MOUSEMOTION:
-            if hitButton.isOver(m_pos):
-                hitButton.colour = HOVER_GREY
-            else:
-                hitButton.colour = GREY
+        # if event.type == pygame.MOUSEMOTION:
+        #     if hitButton.isOver(m_pos):
+        #         hitButton.colour = HOVER_GREY
+        #     else:
+        #         hitButton.colour = GREY
+        #     if standButton.isOver(m_pos):
+        #         standButton.colour = HOVER_GREY
         
-
-    main_render()
+        if playing == [0, False, False, False, False, False]:
+            dealer_play()
+            playing = [0, False, False, False, False, False]
+        
     pygame.display.update()
     clock.tick(60)
-

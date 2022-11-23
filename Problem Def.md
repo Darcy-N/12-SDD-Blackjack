@@ -1,2 +1,0 @@
-# Problem Definition
-### Darcy Nielson
