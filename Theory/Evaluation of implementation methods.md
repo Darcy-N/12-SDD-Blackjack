@@ -15,7 +15,6 @@
 
 - # Parallel conversion
 	- The parallel conversion method involves running both systems simultaneously for a certain amount of time. The new system will be brought in at full scale and the old system will remain at full scale for a certain amount of time. Once that time has ended, The old system will be taken away and all users will be forced onto the new system.
-	-
 	- Advantages:
 		- Allows the users to choose when they transfer over to the new system
 		- Allows for any errors and oversights in the new system to be identified and fixed
@@ -50,7 +49,7 @@
 		- Expensive as both systems need to run at the same time
 		- This method only works with large user-bases
 		- Data needs to be kept consistent while in use by both systems
-		
+
 - # Recommended implementation
 	- Due to the nature of this application, the direct conversion is the only implementation method that is effective.
 	- This is due to:
